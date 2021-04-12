@@ -2,14 +2,13 @@ package wallet
 
 import (
 	"errors"
-
 	"github.com/fm2901/wallet/pkg/types"
 	"github.com/google/uuid"
 )
 
 var ErrPhoneRegistered = errors.New("phone already registered")
 var ErrAmountmustBePositive = errors.New("amount must be a greater then zero")
-var ErrAccountnotFound = errors.New("account not found")
+var ErrAccountNotFound = errors.New("account not found")
 var ErrNotEnoughBalance = errors.New("not enough balance")
 
 type Service struct {
@@ -50,7 +49,7 @@ func (s *Service) Deposit(accountID int64, amount types.Money) error {
 	}
 
 	if account == nil {
-		return ErrAccountnotFound
+		return ErrAccountNotFound
 	}
 
 	account.Balance += amount
@@ -71,7 +70,7 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 	}
 
 	if account == nil {
-		return nil, ErrAccountnotFound
+		return nil, ErrAccountNotFound
 	}
 
 	if account.Balance < amount {
@@ -89,4 +88,13 @@ func (s *Service) Pay(accountID int64, amount types.Money, category types.Paymen
 	}
 	s.payments = append(s.payments, payment)
 	return payment, nil
+}
+
+func (s *Service) FindAccountByID(accountID int64) (*types.Account, error) {
+	for _, acc := range s.accounts {
+		if acc.ID == accountID {
+			return acc, nil
+		}
+	}
+	return nil, ErrAccountNotFound
 }

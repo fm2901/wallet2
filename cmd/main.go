@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/fm2901/wallet/pkg/wallet")
 
 
@@ -20,7 +19,7 @@ func main() {
 		switch err {
 		case wallet.ErrAmountmustBePositive:
 			fmt.Println("Сумма должна быть позитивной")
-		case wallet.ErrAccountnotFound:
+		case wallet.ErrAccountNotFound:
 			fmt.Println("Аккаунт пользователя не найден")
 		}
 		return
