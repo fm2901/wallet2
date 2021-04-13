@@ -195,3 +195,42 @@ func TestService_Repeat_success(t *testing.T) {
 	}
 }
 
+func TestService_FavoritePayment_success(t *testing.T) {
+	s := newTestService()
+
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	_, err = s.FavoritePayment(payment.ID, "first favorite")
+	if err != nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+}
+
+func TestService_PayFromFavorite_success(t *testing.T) {
+	s := newTestService()
+
+	_, payments, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	payment := payments[0]
+	favorite, err := s.FavoritePayment(payment.ID, "first favorite")
+	if err != nil {
+		t.Errorf("FavoritePayment(): error = %v", err)
+		return
+	}
+
+	payment, err = s.PayFromFavorite(favorite.ID)
+	if err != nil {
+		t.Errorf("PayFromFavorite(): error = %v", err)
+		return
+	}
+}
