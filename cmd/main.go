@@ -1,21 +1,25 @@
 package main
 
 import (
-	"fmt"
-	"github.com/fm2901/wallet/pkg/wallet"
+	"log"
 )
 
+//"github.com/fm2901/wallet/pkg/wallet"
 
 func main() {
-	svc := &wallet.Service{}
-	account, err := svc.RegisterAccount("+992926409000")
+	ch := tick()
+	for i := range ch {
+		log.Print(i)
+	}	
+}
 
-	err = svc.Deposit(account.ID, 100)
-	
-
-	payment, err := svc.Pay(account.ID, 10, "car")
-
-	err = svc.Reject(payment.ID)
-	
-	fmt.Println(err)
+func tick() <- chan int {
+	ch := make(chan int)
+	go func() {
+		for i := 0; i < 10; i ++ {
+			ch <- i
+		}
+		close(ch)
+	}()
+	return ch
 }
