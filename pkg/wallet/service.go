@@ -269,7 +269,7 @@ func (s *Service) ImportFromFile(path string) error {
 
 func (s *Service) Export(dir string) error {
 	if len(s.accounts) > 0 {
-		file, err := os.OpenFile(dir + "/accounts.dump", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+		file, err := os.OpenFile(dir+"/accounts.dump", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 		defer func() {
 			if cerr := file.Close(); cerr != nil {
 				if err != nil {
@@ -285,7 +285,7 @@ func (s *Service) Export(dir string) error {
 		file.WriteString(fileStr[:len(fileStr)-1])
 	}
 	if len(s.payments) > 0 {
-		file, err := os.OpenFile(dir + "/payments.dump", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+		file, err := os.OpenFile(dir+"/payments.dump", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 		defer func() {
 			if cerr := file.Close(); cerr != nil {
 				if err != nil {
@@ -301,7 +301,7 @@ func (s *Service) Export(dir string) error {
 		file.WriteString(fileStr[:len(fileStr)-1])
 	}
 	if len(s.favorites) > 0 {
-		file, err := os.OpenFile(dir + "/favorites.dump", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+		file, err := os.OpenFile(dir+"/favorites.dump", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 		defer func() {
 			if cerr := file.Close(); cerr != nil {
 				if err != nil {
@@ -328,7 +328,7 @@ func (s *Service) Import(dir string) error {
 			return err
 		}
 		rows := strings.Split(string(content), "\n")
-		for _, row  := range rows {
+		for _, row := range rows {
 			cols := strings.Split(row, ";")
 
 			id, err := strconv.ParseInt(cols[0], 10, 64)
@@ -362,7 +362,7 @@ func (s *Service) Import(dir string) error {
 			return err
 		}
 		rows := strings.Split(string(content), "\n")
-		for _, row  := range rows {
+		for _, row := range rows {
 			cols := strings.Split(row, ";")
 
 			id := cols[0]
@@ -404,7 +404,7 @@ func (s *Service) Import(dir string) error {
 			return err
 		}
 		rows := strings.Split(string(content), "\n")
-		for _, row  := range rows {
+		for _, row := range rows {
 			cols := strings.Split(row, ";")
 
 			id := cols[0]
@@ -429,7 +429,7 @@ func (s *Service) Import(dir string) error {
 				data := &types.Favorite{
 					ID:        id,
 					AccountID: accountID,
-					Name: 	   cols[2],
+					Name:      cols[2],
 					Amount:    types.Money(amount),
 					Category:  types.PaymentCategory(cols[4]),
 				}
@@ -440,7 +440,7 @@ func (s *Service) Import(dir string) error {
 	return nil
 }
 
-func (s * Service) ExportAccountHistory(accountID int64) ([]types.Payment, error) {
+func (s *Service) ExportAccountHistory(accountID int64) ([]types.Payment, error) {
 	account, err := s.FindAccountByID(accountID)
 	if err != nil {
 		return nil, err
@@ -488,19 +488,19 @@ func (s *Service) HistoryToFiles(payments []types.Payment, dir string, records i
 		return nil
 	}
 	if len(payments) <= records {
-		HistoryToFile(payments, dir + "payments.dump");
+		HistoryToFile(payments, dir+"payments.dump")
 	} else {
 		counter := 1
 		fIndex := 0
 		lIndex := records
 		for {
-			HistoryToFile(payments[fIndex:lIndex], dir + "payments" + fmt.Sprint(counter) + ".dump");
+			HistoryToFile(payments[fIndex:lIndex], dir+"payments"+fmt.Sprint(counter)+".dump")
 			fIndex += records
-			lIndex += records 
+			lIndex += records
 			if lIndex >= len(payments) {
-				if counter * records < len(payments) {
-					lIndex = len(payments) - counter * records
-					HistoryToFile(payments[:lIndex], dir + "payments" + fmt.Sprint(counter+1) + ".dump");
+				if counter*records < len(payments) {
+					lIndex = len(payments) - counter*records
+					HistoryToFile(payments[:lIndex], dir+"payments"+fmt.Sprint(counter+1)+".dump")
 				}
 				break
 			}
@@ -553,72 +553,62 @@ func (s *Service) SumPayments(goroutines int) types.Money {
 	return types.Money(sum)
 }
 
-func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payment, error)
-	_, err = s.FindAccountByID(accountID)
+func (s *Service) FilterPayments(accountID int64, goroutines int) ([]types.Payment, error) {
 
+	if goroutines == 0 || goroutines == 1 {
+		payments, err := s.ExportAccountHistory(accountID)
+		if err != nil {
+			return nil, err
+		}
+		return payments, nil
+	}
+
+	_, err := s.FindAccountByID(accountID)
 	if err != nil {
 		return nil, err
-	}	
+	}
+
+	payments := []types.Payment{}
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
-	result := []types.Payment
-	kol := 0
-	i := 0
-	if goroutines == 0 {
-		kol = len(s.payments)
-	} else {
-		kol = int(len(s.payments) / goroutines)
-	}
-	for i = 0; i < goroutines-1; i++ {
-		wg.Add(1)
-		go func(index int) {
-			defer wg.Done()
-			val := []types.Payment
-			payments := s.payments[index*kol : (index+1)*kol]
-			for _, payment := range payments {
-				if payment.AccountID != accountID {
-					continue
+	paymentsOnGoroutine := len(s.payments) / goroutines
+	count := 0
+	for i := 0; i < len(s.payments); i++ {
+		if i == len(s.payments)-1 {
+			wg.Add(1)
+			go func(count, i int) {
+				defer wg.Done()
+				tmp := []types.Payment{}
+				for _, payment := range s.payments[count:] {
+					if payment.AccountID == accountID {
+						tmp = append(tmp, *payment)
+					}
 				}
-				curPayment := &types.Payment{
-					ID:        paymentID,
-					AccountID: accountID,
-					Amount:    amount,
-					Category:  category,
-					Status:    types.PaymentStatusInProgress,
-				}
-				val = append(val, curPayment)
-			}
-			mu.Lock()
-			result = append(result, val)
-			mu.Unlock()
-
-		}(i)
-	}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		val := int64(0)
-		payments := s.payments[i*kol:]
-		for _, payment := range payments {
-			if payment.AccountID != accountID {
-				continue
-			}
-			curPayment := &types.Payment{
-				ID:        paymentID,
-				AccountID: accountID,
-				Amount:    amount,
-				Category:  category,
-				Status:    types.PaymentStatusInProgress,
-			}
-			val = append(val, curPayment)
+				mu.Lock()
+				defer mu.Unlock()
+				payments = append(payments, tmp...)
+			}(count, i)
 		}
-		mu.Lock()
-		result = append(result, val)
-		mu.Unlock()
 
-	}()
+		if i-count == paymentsOnGoroutine {
+			wg.Add(1)
+			go func(count, i int) {
+				defer wg.Done()
+				tmp := []types.Payment{}
+				for _, payment := range s.payments[count:i] {
+					if payment.AccountID == accountID {
+						tmp = append(tmp, *payment)
+					}
+				}
+				mu.Lock()
+				defer mu.Unlock()
+				payments = append(payments, tmp...)
+			}(count, i)
+			count += paymentsOnGoroutine
+		}
+	}
 	wg.Wait()
-	return result, nil
+	return payments, nil
 }
 
 func (s *Service) SumPaymentsWithProgress() <-chan types.Progress {
