@@ -15,20 +15,20 @@ type testService struct {
 }
 
 type testAccount struct {
-	phone types.Phone
-	balance types.Money
+	phone    types.Phone
+	balance  types.Money
 	payments []struct {
-		amount types.Money
+		amount   types.Money
 		category types.PaymentCategory
 	}
 }
 
-var defaultTestAccount = testAccount {
-	phone: "+992926409003",
+var defaultTestAccount = testAccount{
+	phone:   "+992926409003",
 	balance: 10_000_00,
 	payments: []struct {
-		amount types.Money
-		category types.PaymentCategory 
+		amount   types.Money
+		category types.PaymentCategory
 	}{
 		{amount: 1_000_00, category: "auto"},
 	},
@@ -60,7 +60,7 @@ func newTestService() *testService {
 	return &testService{Service: &wallet.Service{}}
 }
 
-func (s * testService) addAccountWithBalance(phone types.Phone, balance types.Money) (*types.Account, error) {
+func (s *testService) addAccountWithBalance(phone types.Phone, balance types.Money) (*types.Account, error) {
 	account, err := s.RegisterAccount(phone)
 	if err != nil {
 		return nil, fmt.Errorf("can't register account, error = %v", err)
@@ -108,7 +108,7 @@ func TestService_FindPaymentByID_fail(t *testing.T) {
 		t.Errorf("FindPaymentByID(): error = %v", err)
 		return
 	}
-	
+
 	if err != wallet.ErrPaymentNotFound {
 		t.Errorf("FindPaymentByID(): must return ErrPaymentNotFound, returned = %v", err)
 		return
@@ -135,7 +135,7 @@ func TestFindAccountByID_notEmpty(t *testing.T) {
 func TestReject_empty(t *testing.T) {
 	svc := &wallet.Service{}
 	err := svc.Reject("1")
-	if err != wallet.ErrPaymentNotFound{
+	if err != wallet.ErrPaymentNotFound {
 		t.Error("Тест Reject_empty не прошел")
 	}
 }
@@ -155,7 +155,7 @@ func TestService_Reject_success(t *testing.T) {
 		t.Errorf("Reject(): error = %v", err)
 		return
 	}
-	
+
 	savedPayment, err := s.FindPaymentByID(payment.ID)
 	if err != nil {
 		t.Errorf("Reject(): can't find payment by id, error = %v", err)
@@ -175,7 +175,7 @@ func TestService_Reject_success(t *testing.T) {
 		t.Errorf("Reject(): balance didn't changed, account = %v", savedAccount)
 		return
 	}
-	
+
 }
 
 func TestService_Repeat_success(t *testing.T) {
@@ -232,5 +232,40 @@ func TestService_PayFromFavorite_success(t *testing.T) {
 	if err != nil {
 		t.Errorf("PayFromFavorite(): error = %v", err)
 		return
+	}
+}
+
+func BenchmarkSumPaymentsWithProgress(b *testing.B) {
+	s := newTestService()
+	account, _, err := s.addAccount(defaultTestAccount)
+	if err != nil {
+		b.Error(err)
+		return
+	}
+
+	for i := 0; i < 10_000; i++ {
+		_, err := s.Pay(account.ID, 20_000, "car")
+		if err != nil {
+			b.Error(err)
+		}
+
+	}
+	want := types.Money(0)
+	for _, pay := range s.payments {
+		want += pay.Amount
+	}
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ch := s.SumPaymentsWithProgress()
+		result := types.Money(0)
+		for res := range ch {
+			result += res.Result
+		}
+		b.StopTimer()
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result got: %v; want: %v", result, want)
+		}
+		b.StartTimer()
 	}
 }
